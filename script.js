@@ -13,24 +13,71 @@ btnCancelar.addEventListener("click", () => {
     modalCadastrar.close()
 })
 
-form.addEventListener("submit", (evento) => {
+form.addEventListener("submit", async (evento) => {
     evento.preventDefault()
 
-    const album = document.getElementById("disco").value.trim()
-    const artista = document.getElementById("Artista").value.trim()
-    const genero = document.getElementById("genero").value.trim()
-    const imagem = document.getElementById("imagem").value.trim()
+    const titulo = document.getElementById("disco").value.trim()
+    const desenvolvedora = document.getElementById("Artista").value.trim()
+    const plataforma = document.getElementById("genero").value.trim()
+    const imagem_url = document.getElementById("imagem").value.trim()
     const preco = Number(document.getElementById("preco").value)
 
-    criarCard(album, artista, genero, imagem, preco)
+    try {
+        const resposta = await fetch("http://localhost:3000/jogos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                titulo,
+                plataforma,
+                desenvolvedora,
+                imagem_url,
+                preco
+            })
+        })
 
-    form.reset()
-    modalCadastrar.close()
+        if (!resposta.ok) {
+            throw new Error("Erro ao cadastrar jogo")
+        }
+
+        alert("Jogo cadastrado com sucesso!")
+
+        form.reset()
+        modalCadastrar.close()
+
+        carregarJogos()
+
+    } catch (erro) {
+        alert("Não foi possível cadastrar o jogo. Verifique se o servidor está funcionando.")
+    }
 })
 
-function criarCard(album, artista, genero, imagem, preco) {
-    mensagemVazia.hidden = true
+async function carregarJogos() {
+    try {
+        const resposta = await fetch("http://localhost:3000/jogos")
 
+        if (!resposta.ok) {
+            throw new Error("Erro ao buscar jogos")
+        }
+
+        const jogos = await resposta.json()
+
+        lista.querySelectorAll(".card-disco").forEach(card => card.remove())
+
+        mensagemVazia.hidden = jogos.length > 0
+
+        jogos.forEach(jogo => {
+            criarCard(jogo)
+        })
+
+    } catch (erro) {
+        console.log("Erro ao carregar jogos:", erro)
+        alert("Não foi possível carregar os jogos.")
+    }
+}
+
+function criarCard(jogo) {
     const card = document.createElement("article")
     card.classList.add("card-disco")
 
@@ -38,8 +85,8 @@ function criarCard(album, artista, genero, imagem, preco) {
     capa.classList.add("capa")
 
     const imagemCapa = document.createElement("img")
-    imagemCapa.src = imagem
-    imagemCapa.alt = "Capa do álbum " + album
+    imagemCapa.src = jogo.imagem_url
+    imagemCapa.alt = "Capa do jogo " + jogo.titulo
 
     capa.appendChild(imagemCapa)
 
@@ -47,22 +94,26 @@ function criarCard(album, artista, genero, imagem, preco) {
     info.classList.add("info-disco")
 
     const titulo = document.createElement("h3")
-    titulo.textContent = album
+    titulo.textContent = jogo.titulo
 
-    const nomeArtista = document.createElement("p")
-    nomeArtista.textContent = "Desenvolvedora: " + artista
+    const nomeDesenvolvedora = document.createElement("p")
+    nomeDesenvolvedora.textContent = "Desenvolvedora: " + jogo.desenvolvedora
 
-    const nomeGenero = document.createElement("p")
-    nomeGenero.textContent = "Plataforma: " + genero
+    const nomePlataforma = document.createElement("p")
+    nomePlataforma.textContent = "Plataforma: " + jogo.plataforma
 
     const valor = document.createElement("strong")
     valor.classList.add("preco")
-    valor.textContent = preco.toLocaleString("pt-BR", {
+
+    valor.textContent = Number(jogo.preco).toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL"
     })
 
-    info.append(titulo, nomeArtista, nomeGenero, valor)
+    info.append(titulo, nomeDesenvolvedora, nomePlataforma, valor)
     card.append(capa, info)
+
     lista.appendChild(card)
 }
+
+carregarJogos()
